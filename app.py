@@ -2,178 +2,160 @@ import streamlit as st
 import pandas as pd
 import joblib
 import numpy as np
+import os
 
-# Page configuration
+# Configure page
 st.set_page_config(
-    page_title="Employee Salary Predictor",
+    page_title="💼 Employee Salary Prediction",
     page_icon="💼",
     layout="wide"
 )
 
-# Load model and preprocessor
 @st.cache_resource
-def load_models():
+def load_model():
+    """Load the trained model with error handling"""
     try:
-        model = joblib.load('model/employee_salary_model.pkl')
-        preprocessor = joblib.load('model/preprocessor.pkl')
-        return model, preprocessor
+        # Try loading the complete pipeline first
+        if os.path.exists('employee_salary_model.pkl'):
+            model = joblib.load('employee_salary_model.pkl')
+            st.success("✅ Model loaded successfully!")
+            return model
+        else:
+            st.error("❌ Model file 'employee_salary_model.pkl' not found!")
+            return None
     except Exception as e:
-        st.error(f"Error loading models: {e}")
-        return None, None
+        st.error(f"❌ Error loading model: {str(e)}")
+        return None
 
-model, preprocessor = load_models()
-
-# App title and description
-st.title("💼 Employee Salary Prediction")
-st.write("### Predict employee salaries based on key factors")
-st.markdown("---")
-
-if model is not None and preprocessor is not None:
-    # Create columns for layout
+def main():
+    st.title("💼 Employee Salary Prediction")
+    st.markdown("### Predict employee salaries based on demographic and work factors")
+    
+    # Load model
+    model = load_model()
+    
+    if model is None:
+        st.error("⚠️ Cannot proceed without a trained model. Please check your model files.")
+        st.info("""
+        **To fix this issue:**
+        1. Run the model extraction script to create the .pkl files
+        2. Make sure 'employee_salary_model.pkl' is in your app directory
+        3. Redeploy your Streamlit app
+        """)
+        return
+    
+    # Create two columns for input
     col1, col2 = st.columns(2)
-
+    
     with col1:
-        st.subheader("📋 Employee Information")
-
-        # Input fields based on your model requirements
-        age = st.slider("Age", 18, 80, 35, help="Employee's age in years")
-
-        experience = st.slider("Years of Experience", 0, 40, 5, 
-                             help="Total years of professional experience")
-
-        education = st.selectbox("Education Level", 
-                               ["High School", "Some-college", "Bachelors", "Masters", "Doctorate"],
-                               help="Highest education level completed")
-
-        hours_per_week = st.slider("Hours per Week", 20, 80, 40,
-                                 help="Average working hours per week")
-
-        occupation = st.selectbox("Occupation", 
-                                ["Tech-support", "Craft-repair", "Other-service", 
-                                 "Sales", "Exec-managerial", "Prof-specialty", 
-                                 "Handlers-cleaners", "Machine-op-inspct", "Adm-clerical",
-                                 "Farming-fishing", "Transport-moving", "Priv-house-serv",
-                                 "Protective-serv", "Armed-Forces"],
-                                help="Primary job role/occupation")
-
+        st.subheader("👤 Personal Information")
+        age = st.slider("Age", 18, 80, 35)
+        education = st.selectbox("Education Level", [
+            'Bachelors', 'HS-grad', 'Some-college', 'Masters', 
+            'Assoc-acdm', '11th', 'Assoc-voc', '9th', '7th-8th', 
+            '12th', 'Doctorate', '5th-6th', '10th', '1st-4th', 'Preschool'
+        ])
+        race = st.selectbox("Race", [
+            'White', 'Black', 'Asian-Pac-Islander', 'Amer-Indian-Eskimo', 'Other'
+        ])
+        sex = st.selectbox("Gender", ['Male', 'Female'])
+        
     with col2:
-        st.subheader("🎯 Salary Prediction")
+        st.subheader("💼 Work Information")
+        workclass = st.selectbox("Work Class", [
+            'Private', 'Self-emp-not-inc', 'Self-emp-inc', 'Federal-gov',
+            'Local-gov', 'State-gov', 'Without-pay', 'Never-worked'
+        ])
+        occupation = st.selectbox("Occupation", [
+            'Tech-support', 'Craft-repair', 'Other-service', 'Sales',
+            'Exec-managerial', 'Prof-specialty', 'Handlers-cleaners',
+            'Machine-op-inspct', 'Adm-clerical', 'Farming-fishing',
+            'Transport-moving', 'Priv-house-serv', 'Protective-serv', 'Armed-Forces'
+        ])
+        hours_per_week = st.slider("Hours per Week", 20, 80, 40)
+        marital_status = st.selectbox("Marital Status", [
+            'Married-civ-spouse', 'Divorced', 'Never-married', 'Separated',
+            'Widowed', 'Married-spouse-absent', 'Married-AF-spouse'
+        ])
+        
+    # Additional features
+    st.subheader("📊 Additional Information")
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        relationship = st.selectbox("Relationship", [
+            'Wife', 'Own-child', 'Husband', 'Not-in-family', 'Other-relative', 'Unmarried'
+        ])
+        native_country = st.selectbox("Native Country", [
+            'United-States', 'Cambodia', 'England', 'Puerto-Rico', 'Canada',
+            'Germany', 'Outlying-US(Guam-USVI-etc)', 'India', 'Japan', 'Greece',
+            'South', 'China', 'Cuba', 'Iran', 'Honduras', 'Philippines', 'Italy',
+            'Poland', 'Jamaica', 'Vietnam', 'Mexico', 'Portugal', 'Ireland',
+            'France', 'Dominican-Republic', 'Laos', 'Ecuador', 'Taiwan', 'Haiti',
+            'Columbia', 'Hungary', 'Guatemala', 'Nicaragua', 'Scotland',
+            'Thailand', 'Yugoslavia', 'El-Salvador', 'Trinadad&Tobago', 'Peru',
+            'Hong', 'Holand-Netherlands'
+        ])
+        
+    with col4:
+        education_num = st.slider("Education Years", 1, 16, 13)
+        capital_gain = st.number_input("Capital Gain", 0, 99999, 0)
+        capital_loss = st.number_input("Capital Loss", 0, 4356, 0)
+        fnlwgt = st.number_input("Final Weight", 12285, 1484705, 200000)
+    
+    # Prediction
+    if st.button("🎯 Predict Salary", type="primary", use_container_width=True):
+        try:
+            # Create input dataframe
+            input_data = pd.DataFrame({
+                'age': [age],
+                'workclass': [workclass],
+                'fnlwgt': [fnlwgt],
+                'education': [education],
+                'education-num': [education_num],
+                'marital-status': [marital_status],
+                'occupation': [occupation],
+                'relationship': [relationship],
+                'race': [race],
+                'sex': [sex],
+                'capital-gain': [capital_gain],
+                'capital-loss': [capital_loss],
+                'hours-per-week': [hours_per_week],
+                'native-country': [native_country]
+            })
+            
+            # Make prediction
+            prediction = model.predict(input_data)[0]
+            
+            # Display result
+            st.success(f"💰 **Predicted Annual Salary: ${prediction:,.0f}**")
+            
+            # Show confidence intervals
+            if prediction <= 40000:
+                st.info("📊 This prediction suggests a lower income bracket")
+            elif prediction <= 60000:
+                st.info("📊 This prediction suggests a middle income bracket")
+            else:
+                st.info("📊 This prediction suggests a higher income bracket")
+                
+        except Exception as e:
+            st.error(f"❌ Prediction error: {str(e)}")
+            st.info("Please check your input values and try again.")
+    
+    # Model info sidebar
+    with st.sidebar:
+        st.header("ℹ️ Model Information")
+        st.info("""
+        **Algorithm:** LightGBM Regressor
+        
+        **Features Used:**
+        - Age, Education, Work Hours
+        - Occupation, Work Class
+        - Demographics
+        - Capital Gains/Losses
+        
+        **Training Data:** Adult Census Dataset
+        """)
 
-        if st.button("💰 Predict Salary", type="primary", use_container_width=True):
-            try:
-                # Create input dataframe
-                input_data = pd.DataFrame({
-                    'age': [age],
-                    'education': [education],
-                    'occupation': [occupation], 
-                    'hours-per-week': [hours_per_week],
-                    'experience': [experience]  # Custom feature you mentioned
-                })
-
-                # For compatibility with the trained model, we need additional features
-                # Adding default values for other features the model expects
-                input_data['workclass'] = ['Private']
-                input_data['marital-status'] = ['Married-civ-spouse']
-                input_data['relationship'] = ['Husband']
-                input_data['race'] = ['White']
-                input_data['sex'] = ['Male']
-                input_data['capital-gain'] = [0]
-                input_data['capital-loss'] = [0]
-                input_data['native-country'] = ['United-States']
-                input_data['education-num'] = [13]  # Default for bachelors
-
-                # Make prediction
-                predicted_salary = model.predict(input_data)[0]
-
-                # Display results
-                st.success("✅ Prediction Complete!")
-                st.metric("💸 Estimated Annual Salary", f"${predicted_salary:,.0f}")
-
-                # Additional insights
-                st.info(f"""
-                **Key Factors:**
-                - Age: {age} years
-                - Experience: {experience} years  
-                - Education: {education}
-                - Hours/Week: {hours_per_week}
-                - Occupation: {occupation}
-                """)
-
-                # Salary range context
-                if predicted_salary < 40000:
-                    st.warning("💡 This salary is below average. Consider gaining more experience or additional education.")
-                elif predicted_salary > 80000:
-                    st.success("🎉 This is an above-average salary! Great combination of factors.")
-                else:
-                    st.info("📊 This salary is within the typical range for these qualifications.")
-
-            except Exception as e:
-                st.error(f"Prediction error: {e}")
-
-        # Batch prediction section
-        st.markdown("---")
-        st.subheader("📊 Batch Predictions")
-
-        uploaded_file = st.file_uploader("Upload CSV file for batch predictions", 
-                                       type=['csv'], 
-                                       help="Upload a CSV with columns: age, education, occupation, hours-per-week, experience")
-
-        if uploaded_file is not None:
-            try:
-                batch_df = pd.read_csv(uploaded_file)
-                st.write("📋 Preview of uploaded data:")
-                st.dataframe(batch_df.head())
-
-                if st.button("🔄 Process Batch Predictions"):
-                    # Add missing columns for model compatibility
-                    batch_df['workclass'] = batch_df.get('workclass', 'Private')
-                    batch_df['marital-status'] = batch_df.get('marital-status', 'Married-civ-spouse')
-                    batch_df['relationship'] = batch_df.get('relationship', 'Husband')
-                    batch_df['race'] = batch_df.get('race', 'White')
-                    batch_df['sex'] = batch_df.get('sex', 'Male')
-                    batch_df['capital-gain'] = batch_df.get('capital-gain', 0)
-                    batch_df['capital-loss'] = batch_df.get('capital-loss', 0)
-                    batch_df['native-country'] = batch_df.get('native-country', 'United-States')
-                    batch_df['education-num'] = batch_df.get('education-num', 13)
-
-                    # Make batch predictions
-                    predictions = model.predict(batch_df)
-                    batch_df['Predicted_Salary'] = predictions
-
-                    st.success("✅ Batch predictions completed!")
-                    st.dataframe(batch_df[['age', 'education', 'occupation', 'hours-per-week', 'experience', 'Predicted_Salary']])
-
-                    # Download results
-                    csv = batch_df.to_csv(index=False)
-                    st.download_button(
-                        "📥 Download Results",
-                        csv,
-                        "salary_predictions.csv",
-                        "text/csv",
-                        key='download-csv'
-                    )
-
-            except Exception as e:
-                st.error(f"Batch processing error: {e}")
-
-else:
-    st.error("❌ Could not load the prediction model. Please check if model files exist.")
-
-# Sidebar with information
-st.sidebar.title("ℹ️ About")
-st.sidebar.info("""
-This app predicts employee salaries based on:
-- Age
-- Years of Experience  
-- Education Level
-- Working Hours per Week
-- Occupation
-
-The model is trained on employment data and provides estimates for planning purposes.
-""")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("**📈 Model Performance:**")
-st.sidebar.text("• Accuracy: 85%+")
-st.sidebar.text("• RMSE: ~$10K")
-st.sidebar.text("• Features: 5 main inputs")
+if __name__ == "__main__":
+    main()
