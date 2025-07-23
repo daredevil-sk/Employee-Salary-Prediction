@@ -75,7 +75,7 @@ def format_prediction_results(predictions, probabilities):
 def main():
     # Header
     st.title("💼 Employee Salary Classification")
-    st.markdown("### Predict salary class (<=50K or >50K) using XGBoost")
+    st.markdown("### Predict salary class (<=50K or >50K) using XGBoost - comparitively the best model")
 
     # Load model
     model, error_msg = load_model()
